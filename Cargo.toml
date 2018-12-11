@@ -1,0 +1,8 @@
+[package]
+name = "console-image"
+version = "0.1.0"
+authors = ["szymokon"]
+edition = "2018"
+
+[dependencies]
+image = "0.20.1"
