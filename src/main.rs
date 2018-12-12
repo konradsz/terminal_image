@@ -29,7 +29,7 @@ fn calculate_average_pixel(
     }
 }
 
-fn find_nearest_matching_color(pixel: image::Rgb<u8>) -> image::Rgb<u8> {
+fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
     /*let mut best_match = (0, 0, 0);
     let mut min_distance = std::i32::MAX;
     for color in ANSI_COLORS.iter().skip(16) {
@@ -65,11 +65,11 @@ fn find_nearest_matching_color(pixel: image::Rgb<u8>) -> image::Rgb<u8> {
 }
 
 fn main() {
-    let mut input = image::open("lena.jpg").unwrap();
+    let input: image::DynamicImage = image::open("lena.jpg").unwrap();
+    //input = input.to_rgb();
     let (width, height) = input.dimensions();
 
-    find_nearest_matching_color(image::Rgb { data: [100, 100, 100] });
-    //println!("dimensions {:?}", input.dimensions());
+    //find_nearest_matching_color(image::Rgb { data: [100, 100, 100] });
 
     //let pixel = img.get_pixel(0, 0);
     //println!("pixel {:?}", pixel);
@@ -85,26 +85,27 @@ fn main() {
         }
     }*/
 
-    //let mut output = image::ImageBuffer::new(width, height);
-    /*for (x, y, pixel) in output.enumerate_pixels_mut() {
-        let p = calculate_average_pixel(&input, x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE);
-        *pixel = p;
+
+    let mut output = image::ImageBuffer::new(width, height);
+    for (x, y, pixel) in output.enumerate_pixels_mut() { // for_each ?
+        let nearest_pixel = find_nearest_matching_color(input.get_pixel(x, y));
+        *pixel = nearest_pixel;
     }
 
-    find_nearest_matching_color(input.get_pixel(0, 0));
-    output.save("output.jpg").unwrap();*/
+    output.save("output.jpg").unwrap();
+
+    //output.enumerate_pixels().zip(output.enumerate_pixels().skip(1)).for_each(|(p1, p2)| {
+        //print!("\x1B[48;2;0;128;0m\x1B[38;2;255;0;0m\u{2584}");
+    //    println!("p1: ({}, {}), p2: ({}, {})", p1.0, p1.1, p2.0, p2.1);
+    //});
 
 
     // http://jafrog.com/2013/11/23/colors-in-terminal.html
     // https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences
-    /*println!("\u{25FC}\u{25FC}");
-    println!("\u{25FC}\u{25FC}");
-    print!("\x1b[48;2;128;0;0m\x1b[38;2;255;0;0m▄");
-    print!("\x1b[48;2;255;0;0m\x1b[38;2;255;0;0m▄");
-    print!("\x1b[48;2;255;0;0m\x1b[38;2;255;0;0m▄");
-    print!("\x1b[m\n");
-    print!("\x1b[48;2;255;0;0m\x1b[38;2;255;0;0m▄");
-    println!("\x1b[m\n");*/
+    /*print!("\x1B[48;2;0;128;0m\x1B[38;2;255;0;0m\u{2584}"); // U+2584 Lower Half Block character
+    print!("\x1B[48;2;0;128;0m\x1B[38;2;255;0;0m\u{2584}"); // U+2584 Lower Half Block character
+    println!("\x1B[m\n");
+    println!("\x1B[48;5;255;0;0masd");*/
 }
 
 const ANSI_COLORS: [(u8, u8, u8); 256] = [
