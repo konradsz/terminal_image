@@ -1,4 +1,5 @@
 extern crate image;
+extern crate termsize;
 
 use image::GenericImageView;
 
@@ -23,8 +24,13 @@ fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
 
 fn main() {
     let mut input: image::DynamicImage = image::open("lena.jpg").unwrap();
-    input = input.resize(80, 80, image::FilterType::Nearest);
-    let (width, height) = input.dimensions();
+    let (input_width, input_height) = input.dimensions();
+
+    let width = termsize::get().map(|size| size.cols as u32).unwrap();
+    let coefficient = input_width as f64 / width as f64;
+    let height = (input_height as f64 / coefficient) as u32;
+
+    input = input.resize(width, height, image::FilterType::Nearest);
 
     let mut output = image::ImageBuffer::new(width, height);
     output
