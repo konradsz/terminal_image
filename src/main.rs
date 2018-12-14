@@ -8,13 +8,13 @@ fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
         .iter()
         .skip(16)
         .min_by(|color_a, color_b| {
-            ((pixel.data[0] as i32 - color_a.0 as i32).pow(2)
-                + (pixel.data[1] as i32 - color_a.1 as i32).pow(2)
-                + (pixel.data[2] as i32 - color_a.2 as i32).pow(2))
+            ((i32::from(pixel.data[0]) - i32::from(color_a.0)).pow(2)
+                + (i32::from(pixel.data[1]) - i32::from(color_a.1)).pow(2)
+                + (i32::from(pixel.data[2]) - i32::from(color_a.2)).pow(2))
             .cmp(
-                &((pixel.data[0] as i32 - color_b.0 as i32).pow(2)
-                    + (pixel.data[1] as i32 - color_b.1 as i32).pow(2)
-                    + (pixel.data[2] as i32 - color_b.2 as i32).pow(2)),
+                &((i32::from(pixel.data[0]) - i32::from(color_b.0)).pow(2)
+                    + (i32::from(pixel.data[1]) - i32::from(color_b.1)).pow(2)
+                    + (i32::from(pixel.data[2]) - i32::from(color_b.2)).pow(2)),
             )
         })
         .unwrap();
@@ -26,9 +26,9 @@ fn main() {
     let mut input: image::DynamicImage = image::open("lena.jpg").unwrap();
     let (input_width, input_height) = input.dimensions();
 
-    let width = termsize::get().map(|size| size.cols as u32).unwrap();
-    let coefficient = input_width as f64 / width as f64;
-    let height = (input_height as f64 / coefficient) as u32;
+    let width = termsize::get().map(|size| u32::from(size.cols)).unwrap();
+    let coefficient = f64::from(input_width) / f64::from(width);
+    let height = (f64::from(input_height) / coefficient) as u32;
 
     input = input.resize(width, height, image::FilterType::Nearest);
 
@@ -39,8 +39,8 @@ fn main() {
 
     // TRUE COLOR
     /*output
-        .enumerate_pixels_mut()
-        .for_each(|(x, y, pixel)| *pixel = input.get_pixel(x, y));*/
+    .enumerate_pixels_mut()
+    .for_each(|(x, y, pixel)| *pixel = input.get_pixel(x, y));*/
 
     // U+2584 Lower Half Block with background gives 2 pixels per one character in terminal
     output
@@ -58,7 +58,7 @@ fn main() {
                 bottom_pixel.data[2]
             );
             if x == width - 1 {
-                print!("\x1B[m\n");
+                println!("\x1B[m");
             }
         });
 
