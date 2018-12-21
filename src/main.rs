@@ -25,6 +25,30 @@ fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
     image::Rgb { data: [*r, *g, *b] }
 }
 
+enum Orientation {
+    Horizontal,
+    Vertical
+}
+
+fn calculate_image_size(image_w: u32, image_h: u32, terminal_w: u32, terminal_h: u32) {
+    let image_ratio = f64::from(image_w) / f64::from(image_h);
+    let terminal_ratio = f64::from(terminal_w) / f64::from(terminal_h);
+
+    let image_orientation;
+    if image_ratio >= 1.0 {
+        image_orientation = Orientation::Horizontal;
+    } else {
+        image_orientation = Orientation::Vertical;
+    }
+
+    let terminal_orientation;
+    if terminal_ratio >= 1.0 {
+        terminal_orientation = Orientation::Horizontal;
+    } else {
+        terminal_orientation = Orientation::Vertical;
+    }
+}
+
 fn main() {
     let matches = App::new("myprog")
         .args_from_usage(
@@ -37,11 +61,11 @@ fn main() {
     let file_name = matches.value_of("input_file").unwrap();
     println!("{}", file_name);
 
-    let width = value_t!(matches, "width", u32).unwrap_or(0);
-    println!("{}", width);
+    let width_arg = value_t!(matches, "width", u32);//.unwrap_or(0);
+    //println!("{}", width);
 
-    let height = value_t!(matches, "height", u32).unwrap_or(0);
-    println!("{}", height);
+    let height_arg = value_t!(matches, "height", u32);//.unwrap_or(0);
+    //println!("{}", height);
 
     if matches.is_present("true-color") {
         println!("TRUE COLOR");
@@ -50,16 +74,34 @@ fn main() {
     let mut input: image::DynamicImage = image::open(file_name).unwrap();
     let (input_width, input_height) = input.dimensions();
 
+    /*let width;
+    let height;
+    if width_arg.is_none() && height_arg.is_none() {
+        // risze to fit in terminal
+        // if image size is smaller than terminal size, use image size
+        width = termsize::get().map(|size| u32::from(size.cols)).unwrap();
+        let coefficient = f64::from(input_width) / f64::from(width);
+        height = (f64::from(input_height) / coefficient) as u32;
+    } else if width_arg.is_some() && height_arg.is_some() {
+        width = width_arg.unwrap();
+        height = height_arg.unwrap();
+    } else if width_arg.is_some() && height_arg.is_none() {
+        let coefficient = f64::from(input_width) / f64::from(width);
+        width = width_arg.unwrap();
+    } else if width_arg.is_none() && height_arg.is_some() {
+        height = height_arg.unwrap();
+    }*/
+
     let width = termsize::get().map(|size| u32::from(size.cols)).unwrap();
     let coefficient = f64::from(input_width) / f64::from(width);
     let height = (f64::from(input_height) / coefficient) as u32;
-    println!("{}, {}", width, height);
+    //println!("{}, {}", width, height);
 
     // resize <- preserve aspect ratio
     // resize_exact <- ignores aspect ratio
     input = input.resize_exact(width, height, image::FilterType::Nearest);
-    let (input_width, input_height) = input.dimensions();
-    println!("{}, {}", input_width, input_height);
+    //let (input_width, input_height) = input.dimensions();
+    //println!("{}, {}", input_width, input_height);
 
     let mut output = image::ImageBuffer::new(width, height);
     output
