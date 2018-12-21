@@ -1,7 +1,10 @@
 extern crate image;
 extern crate termsize;
+#[macro_use]
+extern crate clap;
 
 use image::GenericImageView;
+use clap::App;
 
 fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
     let (r, g, b) = ANSI_COLORS
@@ -23,19 +26,48 @@ fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
 }
 
 fn main() {
-    let mut input: image::DynamicImage = image::open("lena.jpg").unwrap();
+    let matches = App::new("myprog")
+        .args_from_usage(
+            "<input_file> 'Supply an input file to use'
+            -w, --width=[width] 'Sets width'
+            -h, --height=[height] 'Sets height'
+            -tc, --true-color 'Sets true-color'"
+        ).get_matches();
+
+    let file_name = matches.value_of("input_file").unwrap();
+    println!("{}", file_name);
+
+    let width = value_t!(matches, "width", u32).unwrap_or(0);
+    println!("{}", width);
+
+    let height = value_t!(matches, "height", u32).unwrap_or(0);
+    println!("{}", height);
+
+    if matches.is_present("true-color") {
+        println!("TRUE COLOR");
+    }
+
+    let mut input: image::DynamicImage = image::open(file_name).unwrap();
     let (input_width, input_height) = input.dimensions();
 
     let width = termsize::get().map(|size| u32::from(size.cols)).unwrap();
     let coefficient = f64::from(input_width) / f64::from(width);
     let height = (f64::from(input_height) / coefficient) as u32;
+    println!("{}, {}", width, height);
 
-    input = input.resize(width, height, image::FilterType::Nearest);
+    // resize <- preserve aspect ratio
+    // resize_exact <- ignores aspect ratio
+    input = input.resize_exact(width, height, image::FilterType::Nearest);
+    let (input_width, input_height) = input.dimensions();
+    println!("{}, {}", input_width, input_height);
 
     let mut output = image::ImageBuffer::new(width, height);
     output
         .enumerate_pixels_mut()
-        .for_each(|(x, y, pixel)| *pixel = find_nearest_matching_color(input.get_pixel(x, y)));
+        .for_each(|(x, y, pixel)| {
+            *pixel = find_nearest_matching_color(input.get_pixel(x, y));
+        });
+
 
     // TRUE COLOR
     /*output
