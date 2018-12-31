@@ -25,84 +25,54 @@ fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
     image::Rgb { data: [*r, *g, *b] }
 }
 
-enum Orientation {
-    Horizontal,
-    Vertical
-}
-
-fn calculate_image_size(image_w: u32, image_h: u32, terminal_w: u32, terminal_h: u32) {
-    let image_ratio = f64::from(image_w) / f64::from(image_h);
-    let terminal_ratio = f64::from(terminal_w) / f64::from(terminal_h);
-
-    let image_orientation;
-    if image_ratio >= 1.0 {
-        image_orientation = Orientation::Horizontal;
-    } else {
-        image_orientation = Orientation::Vertical;
-    }
-
-    let terminal_orientation;
-    if terminal_ratio >= 1.0 {
-        terminal_orientation = Orientation::Horizontal;
-    } else {
-        terminal_orientation = Orientation::Vertical;
-    }
-}
-
 fn main() {
-    let matches = App::new("myprog")
+    let matches = App::new("terminal_image")
         .args_from_usage(
-            "<input_file> 'Supply an input file to use'
+            "<input_file> 'An input image to display'
             -w, --width=[width] 'Sets width'
             -h, --height=[height] 'Sets height'
-            -tc, --true-color 'Sets true-color'"
+            -tc, --true-colour 'Uses 24-bit colour palette'"
         ).get_matches();
 
     let file_name = matches.value_of("input_file").unwrap();
-    println!("{}", file_name);
+    let width_arg = value_t!(matches, "width", u32);
+    let height_arg = value_t!(matches, "height", u32);
 
-    let width_arg = value_t!(matches, "width", u32);//.unwrap_or(0);
-    //println!("{}", width);
-
-    let height_arg = value_t!(matches, "height", u32);//.unwrap_or(0);
-    //println!("{}", height);
-
-    if matches.is_present("true-color") {
+    if matches.is_present("true-colour") {
         println!("TRUE COLOR");
     }
 
     let mut input: image::DynamicImage = image::open(file_name).unwrap();
     let (input_width, input_height) = input.dimensions();
 
-    /*let width;
-    let height;
-    if width_arg.is_none() && height_arg.is_none() {
-        // risze to fit in terminal
-        // if image size is smaller than terminal size, use image size
-        width = termsize::get().map(|size| u32::from(size.cols)).unwrap();
+    if width_arg.is_err() && height_arg.is_err() {
+        let (mut width, mut height) = termsize::get().map(|size| (size.cols as u32, ((size.rows - 1) * 2) as u32)).unwrap();
+        if input_width < width && input_height < height {
+            width = input_width;
+            height = input_height;
+        }
+
+        input = input.resize(width, height, image::FilterType::Nearest);
+    } else if width_arg.is_ok() && height_arg.is_ok() {
+        let (width, height) = (width_arg.unwrap(), height_arg.unwrap());
+
+        input = input.resize_exact(width, height, image::FilterType::Nearest);
+    } else if width_arg.is_ok() && height_arg.is_err() {
+        let width = width_arg.unwrap();
         let coefficient = f64::from(input_width) / f64::from(width);
-        height = (f64::from(input_height) / coefficient) as u32;
-    } else if width_arg.is_some() && height_arg.is_some() {
-        width = width_arg.unwrap();
-        height = height_arg.unwrap();
-    } else if width_arg.is_some() && height_arg.is_none() {
-        let coefficient = f64::from(input_width) / f64::from(width);
-        width = width_arg.unwrap();
-    } else if width_arg.is_none() && height_arg.is_some() {
-        height = height_arg.unwrap();
-    }*/
+        let height = (f64::from(input_height) / coefficient) as u32;
 
-    let width = termsize::get().map(|size| u32::from(size.cols)).unwrap();
-    let coefficient = f64::from(input_width) / f64::from(width);
-    let height = (f64::from(input_height) / coefficient) as u32;
-    //println!("{}, {}", width, height);
+        input = input.resize_exact(width, height, image::FilterType::Nearest);
+    } else if width_arg.is_err() && height_arg.is_ok() {
+        let height = height_arg.unwrap();
+        let coefficient = f64::from(input_height) / f64::from(height);
+        let width = (f64::from(input_width) / coefficient) as u32;
 
-    // resize <- preserve aspect ratio
-    // resize_exact <- ignores aspect ratio
-    input = input.resize_exact(width, height, image::FilterType::Nearest);
-    //let (input_width, input_height) = input.dimensions();
-    //println!("{}, {}", input_width, input_height);
+        input = input.resize_exact(width, height, image::FilterType::Nearest);
+    }
 
+    let (width, height) = input.dimensions();
+    println!("Output size: ({}, {})", width, height);
     let mut output = image::ImageBuffer::new(width, height);
     output
         .enumerate_pixels_mut()
@@ -113,8 +83,8 @@ fn main() {
 
     // TRUE COLOR
     /*output
-    .enumerate_pixels_mut()
-    .for_each(|(x, y, pixel)| *pixel = input.get_pixel(x, y));*/
+        .enumerate_pixels_mut()
+        .for_each(|(x, y, pixel)| *pixel = input.get_pixel(x, y));*/
 
     // U+2584 Lower Half Block with background gives 2 pixels per one character in terminal
     output
@@ -135,10 +105,9 @@ fn main() {
                 println!("\x1B[m");
             }
         });
-
-    //output.save("output.jpg").unwrap();
 }
 
+// https://jonasjacek.github.io/colors/
 const ANSI_COLORS: [(u8, u8, u8); 256] = [
     (0, 0, 0),
     (128, 0, 0),
