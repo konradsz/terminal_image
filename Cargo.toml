@@ -1,5 +1,5 @@
 [package]
-name = "console-image"
+name = "terminal-image"
 version = "0.1.0"
 authors = ["szymokon"]
 edition = "2018"
