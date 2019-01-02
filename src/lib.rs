@@ -87,19 +87,16 @@ fn create_output_image(
 }
 
 fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgba<u8> {
+    let distance = |pixel: image::Rgba<u8>, color: (u8, u8, u8)| {
+        (i32::from(pixel.data[0]) - i32::from(color.0)).pow(2)
+            + (i32::from(pixel.data[1]) - i32::from(color.1)).pow(2)
+            + (i32::from(pixel.data[2]) - i32::from(color.2)).pow(2)
+    };
+
     let (r, g, b) = ansi_colors::COLORS
         .iter()
         .skip(16)
-        .min_by(|color_a, color_b| {
-            ((i32::from(pixel.data[0]) - i32::from(color_a.0)).pow(2)
-                + (i32::from(pixel.data[1]) - i32::from(color_a.1)).pow(2)
-                + (i32::from(pixel.data[2]) - i32::from(color_a.2)).pow(2))
-            .cmp(
-                &((i32::from(pixel.data[0]) - i32::from(color_b.0)).pow(2)
-                    + (i32::from(pixel.data[1]) - i32::from(color_b.1)).pow(2)
-                    + (i32::from(pixel.data[2]) - i32::from(color_b.2)).pow(2)),
-            )
-        })
+        .min_by(|&color_a, &color_b| distance(pixel, *color_a).cmp(&distance(pixel, *color_b)))
         .unwrap();
 
     image::Rgba {
