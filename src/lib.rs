@@ -1,6 +1,8 @@
 extern crate image;
 extern crate termsize;
 
+use image::GenericImageView;
+
 pub struct Args {
     file_name: String,
     width: Result<u32, clap::Error>,
@@ -24,6 +26,64 @@ impl Args {
     }
 }
 
+fn resize_image(
+    mut image: image::DynamicImage,
+    width: Result<u32, clap::Error>,
+    height: Result<u32, clap::Error>,
+) -> image::DynamicImage {
+    let (original_width, original_height) = image.dimensions();
+
+    if width.is_err() && height.is_err() {
+        let (mut width, mut height) = termsize::get()
+            .map(|size| (u32::from(size.cols), u32::from((size.rows - 1) * 2)))
+            .unwrap();
+        if original_width < width && original_height < height {
+            width = original_width;
+            height = original_height;
+        }
+
+        image = image.resize(width, height, image::FilterType::Nearest);
+    } else if width.is_ok() && height.is_ok() {
+        let (width, height) = (width.unwrap(), height.unwrap());
+
+        image = image.resize_exact(width, height, image::FilterType::Nearest);
+    } else if width.is_ok() && height.is_err() {
+        let width = width.unwrap();
+        let coefficient = f64::from(original_width) / f64::from(width);
+        let height = (f64::from(original_height) / coefficient) as u32;
+
+        image = image.resize_exact(width, height, image::FilterType::Nearest);
+    } else if width.is_err() && height.is_ok() {
+        let height = height.unwrap();
+        let coefficient = f64::from(original_height) / f64::from(height);
+        let width = (f64::from(original_width) / coefficient) as u32;
+
+        image = image.resize_exact(width, height, image::FilterType::Nearest);
+    }
+    image
+}
+
+fn create_output_image(
+    input: &image::DynamicImage,
+    true_colour: bool,
+) -> image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>> {
+    let (width, height) = input.dimensions();
+    println!("Output size: ({}, {})", width, height);
+
+    let mut output = image::ImageBuffer::new(width, height);
+    if true_colour {
+        output
+            .enumerate_pixels_mut()
+            .for_each(|(x, y, pixel)| *pixel = input.get_pixel(x, y));
+    } else {
+        output.enumerate_pixels_mut().for_each(|(x, y, pixel)| {
+            *pixel = find_nearest_matching_color(input.get_pixel(x, y));
+        });
+    }
+
+    output
+}
+
 fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgba<u8> {
     let (r, g, b) = ANSI_COLORS
         .iter()
@@ -45,7 +105,8 @@ fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgba<u8> {
     }
 }
 
-fn display_image(output: &image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, width: u32) {
+fn display_image(output: &image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>) {
+    let width = output.dimensions().0;
     // U+2584 Lower Half Block with background gives 2 pixels per one character in terminal
     output
         .enumerate_pixels()
@@ -68,53 +129,14 @@ fn display_image(output: &image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>
 }
 
 pub fn run(config: Args) {
-    use image::GenericImageView;
+    let input = resize_image(
+        image::open(&config.file_name).unwrap(),
+        config.width,
+        config.height,
+    );
+    let output = create_output_image(&input, config.true_colour);
 
-    let mut input: image::DynamicImage = image::open(config.file_name).unwrap();
-    let (input_width, input_height) = input.dimensions();
-
-    if config.width.is_err() && config.height.is_err() {
-        let (mut width, mut height) = termsize::get()
-            .map(|size| (u32::from(size.cols), u32::from((size.rows - 1) * 2)))
-            .unwrap();
-        if input_width < width && input_height < height {
-            width = input_width;
-            height = input_height;
-        }
-
-        input = input.resize(width, height, image::FilterType::Nearest);
-    } else if config.width.is_ok() && config.height.is_ok() {
-        let (width, height) = (config.width.unwrap(), config.height.unwrap());
-
-        input = input.resize_exact(width, height, image::FilterType::Nearest);
-    } else if config.width.is_ok() && config.height.is_err() {
-        let width = config.width.unwrap();
-        let coefficient = f64::from(input_width) / f64::from(width);
-        let height = (f64::from(input_height) / coefficient) as u32;
-
-        input = input.resize_exact(width, height, image::FilterType::Nearest);
-    } else if config.width.is_err() && config.height.is_ok() {
-        let height = config.height.unwrap();
-        let coefficient = f64::from(input_height) / f64::from(height);
-        let width = (f64::from(input_width) / coefficient) as u32;
-
-        input = input.resize_exact(width, height, image::FilterType::Nearest);
-    }
-
-    let (width, height) = input.dimensions();
-    println!("Output size: ({}, {})", width, height);
-    let mut output = image::ImageBuffer::new(width, height);
-
-    if config.true_colour {
-        output
-            .enumerate_pixels_mut()
-            .for_each(|(x, y, pixel)| *pixel = input.get_pixel(x, y));
-    } else {
-        output.enumerate_pixels_mut().for_each(|(x, y, pixel)| {
-            *pixel = find_nearest_matching_color(input.get_pixel(x, y));
-        });
-    }
-    display_image(&output, width);
+    display_image(&output);
 }
 
 // https://jonasjacek.github.io/colors/
