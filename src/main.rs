@@ -11,8 +11,9 @@ fn main() {
             "<input_file> 'An input image to display'
             -w, --width=[width] 'Sets width'
             -h, --height=[height] 'Sets height'
-            --true-colour 'Uses 24-bit colour palette'"
-        ).get_matches();
+            --true-colour 'Uses 24-bit colour palette'",
+        )
+        .get_matches();
 
     let file_name = matches.value_of("input_file").unwrap();
     let width = value_t!(matches, "width", u32);

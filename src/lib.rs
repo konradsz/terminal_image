@@ -5,21 +5,26 @@ pub struct Args {
     file_name: String,
     width: Result<u32, clap::Error>,
     height: Result<u32, clap::Error>,
-    true_colour: bool
+    true_colour: bool,
 }
 
 impl Args {
-    pub fn new(file_name: &str, width: Result<u32, clap::Error>, height: Result<u32, clap::Error>, true_colour: bool) -> Args {
+    pub fn new(
+        file_name: &str,
+        width: Result<u32, clap::Error>,
+        height: Result<u32, clap::Error>,
+        true_colour: bool,
+    ) -> Args {
         Args {
             file_name: String::from(file_name),
             width,
             height,
-            true_colour
+            true_colour,
         }
     }
 }
 
-fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
+fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgba<u8> {
     let (r, g, b) = ANSI_COLORS
         .iter()
         .skip(16)
@@ -35,32 +40,12 @@ fn find_nearest_matching_color(pixel: image::Rgba<u8>) -> image::Rgb<u8> {
         })
         .unwrap();
 
-    image::Rgb { data: [*r, *g, *b] }
+    image::Rgba {
+        data: [*r, *g, *b, u8::max_value()],
+    }
 }
 
-fn draw(output: image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, width: u32) {
-    // U+2584 Lower Half Block with background gives 2 pixels per one character in terminal
-    output
-        .enumerate_pixels()
-        .filter(|(_, y, _)| y % 2 == 0)
-        .zip(output.enumerate_pixels().filter(|(_, y, _)| y % 2 == 1))
-        .for_each(|((x, _, top_pixel), (_, _, bottom_pixel))| {
-            print!(
-                "\x1B[48;2;{};{};{}m\x1B[38;2;{};{};{}m\u{2584}",
-                top_pixel.data[0],
-                top_pixel.data[1],
-                top_pixel.data[2],
-                bottom_pixel.data[0],
-                bottom_pixel.data[1],
-                bottom_pixel.data[2]
-            );
-            if x == width - 1 {
-                println!("\x1B[m");
-            }
-        });
-}
-
-fn draw2(output: image::ImageBuffer<image::Rgb<u8>, std::vec::Vec<u8>>, width: u32) {
+fn display_image(output: &image::ImageBuffer<image::Rgba<u8>, std::vec::Vec<u8>>, width: u32) {
     // U+2584 Lower Half Block with background gives 2 pixels per one character in terminal
     output
         .enumerate_pixels()
@@ -89,7 +74,9 @@ pub fn run(config: Args) {
     let (input_width, input_height) = input.dimensions();
 
     if config.width.is_err() && config.height.is_err() {
-        let (mut width, mut height) = termsize::get().map(|size| (size.cols as u32, ((size.rows - 1) * 2) as u32)).unwrap();
+        let (mut width, mut height) = termsize::get()
+            .map(|size| (u32::from(size.cols), u32::from((size.rows - 1) * 2)))
+            .unwrap();
         if input_width < width && input_height < height {
             width = input_width;
             height = input_height;
@@ -116,24 +103,18 @@ pub fn run(config: Args) {
 
     let (width, height) = input.dimensions();
     println!("Output size: ({}, {})", width, height);
-//    let mut output = image::ImageBuffer::new(width, height);
+    let mut output = image::ImageBuffer::new(width, height);
 
     if config.true_colour {
-        let mut output = image::ImageBuffer::new(width, height);
         output
             .enumerate_pixels_mut()
             .for_each(|(x, y, pixel)| *pixel = input.get_pixel(x, y));
-        draw(output, width);
     } else {
-        let mut output = image::ImageBuffer::new(width, height);
-        output
-            .enumerate_pixels_mut()
-            .for_each(|(x, y, pixel)| {
-                *pixel = find_nearest_matching_color(input.get_pixel(x, y));
-            });
-
-        draw2(output, width);
+        output.enumerate_pixels_mut().for_each(|(x, y, pixel)| {
+            *pixel = find_nearest_matching_color(input.get_pixel(x, y));
+        });
     }
+    display_image(&output, width);
 }
 
 // https://jonasjacek.github.io/colors/
