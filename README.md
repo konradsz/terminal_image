@@ -17,3 +17,5 @@ OPTIONS:
 ARGS:
     <input_file>    An input image to display
 ```
+![lena-256 colors](https://user-images.githubusercontent.com/25437234/50633139-8bdca300-0f4a-11e9-8fdd-114d2b7dac29.png)
+![lena-24-bit palette](https://user-images.githubusercontent.com/25437234/50633137-8a12df80-0f4a-11e9-9458-615fc874d24d.png)
