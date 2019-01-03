@@ -1,5 +1,6 @@
 # terminal_image
-Allows to display images in ANSI terminals.
+Allows to display images in ANSI terminals.  
+
 Tiny project created to learn Rust. Inspired by https://github.com/hopey-dishwasher/termpix
 
 ```
